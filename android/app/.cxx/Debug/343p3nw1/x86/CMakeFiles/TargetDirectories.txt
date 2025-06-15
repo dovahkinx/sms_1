@@ -1,0 +1,2 @@
+C:/Users/hakan/Desktop/sms_guard-master/android/app/.cxx/Debug/343p3nw1/x86/CMakeFiles/edit_cache.dir
+C:/Users/hakan/Desktop/sms_guard-master/android/app/.cxx/Debug/343p3nw1/x86/CMakeFiles/rebuild_cache.dir

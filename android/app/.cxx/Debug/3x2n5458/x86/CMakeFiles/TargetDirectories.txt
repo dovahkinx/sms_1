@@ -1,0 +1,2 @@
+C:/Users/hakan/Desktop/newest_sms-main/android/app/.cxx/Debug/3x2n5458/x86/CMakeFiles/edit_cache.dir
+C:/Users/hakan/Desktop/newest_sms-main/android/app/.cxx/Debug/3x2n5458/x86/CMakeFiles/rebuild_cache.dir
