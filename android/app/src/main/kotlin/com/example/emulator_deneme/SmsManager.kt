@@ -165,21 +165,21 @@ class SmsManager {
         }
         
         fun getThreadsReadStatus(context: Context, threadIds: List<String>): Map<String, Boolean> {
-            val statusMap = mutableMapOf<String, Boolean>()
             if (threadIds.isEmpty()) {
-                return statusMap
+                return emptyMap()
             }
-
+            val statusMap = mutableMapOf<String, Boolean>()
             try {
                 val inboxUri = Uri.parse("content://sms/inbox")
                 val projection = arrayOf(Telephony.Sms.THREAD_ID)
-                val selection = "${Telephony.Sms.THREAD_ID} IN (${threadIds.joinToString(",")}) AND ${Telephony.Sms.READ} = 0"
+                val selection = "${Telephony.Sms.THREAD_ID} IN (${threadIds.joinToString(separator = ",", prefix = "(", postfix = ")")}) AND ${Telephony.Sms.READ} = 0"
+                val selectionArgs = threadIds.toTypedArray()
 
                 context.contentResolver.query(
                     inboxUri,
                     projection,
                     selection,
-                    null,
+                    selectionArgs,
                     null
                 )?.use { cursor ->
                     val unreadThreadIds = mutableSetOf<String>()
