@@ -165,6 +165,17 @@ class SmsService {
       return true; // Hata durumunda varsayılan olarak okunmuş kabul et
     }
   }
+
+  Future<Map<String, bool>> getThreadsReadStatus(List<String> threadIds) async {
+    try {
+      final result = await _channel.invokeMethod('getThreadsReadStatus', {
+        'threadIds': threadIds,
+      });
+      return Map<String, bool>.from(result);
+    } catch (e) {
+      return {};
+    }
+  }
   
   /// Telefon numarasını Türkiye formatına çevirir
   String _formatPhoneNumber(String phoneNumber) {

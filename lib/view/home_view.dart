@@ -220,104 +220,102 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       itemBuilder: (context, index) {
         var thread = state.myMessages[index];
         
-        // FutureBuilder kullanarak Kotlin tarafından thread okunma durumunu al
-        return FutureBuilder<bool>(
-          future: thread.threadId != null 
-              ? SmsService.instance.isThreadRead(thread.threadId.toString()) 
-              : Future.value(true), // threadId yoksa okunmuş varsay
-          builder: (context, snapshot) {
-            // Eğer veri hala yükleniyorsa thread'i okunmuş kabul et
-            bool isRead = snapshot.hasData ? snapshot.data! : true;
-            bool isUnread = !isRead; // isRead'in tersi
-            
-            return Card(
-              child: InkWell(
-                borderRadius: BorderRadius.circular(16),
-                onTap: () async {
-                  // Thread'i okundu olarak işaretle (Kotlin tarafında gerçekleşiyor)
-                  if (thread.threadId != null && isUnread) {
-                    // SmsService'i kullanarak okundu olarak işaretle
-                    await SmsService.instance.markThreadAsRead(thread.threadId.toString());
-                  }
-                  
-                  // Mevcut işlemleri gerçekleştir
-                  context.read<SmsCubit>().filterMessageForAdress(thread.address ?? '');
-                  _navigateToChatScreen(thread.address, thread.name);
-                },
-                onLongPress: () => _showMessageOptions(context, thread),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 4),
-                  child: ListTile(
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                    leading: Hero(
-                      tag: "avatar_${thread.address}",
-                      child: CircleAvatar(
-                        radius: 24,
-                        backgroundColor: _getAvatarColor(thread.name),
-                        child: thread.name == ""
-                            ? _circleAvatarText("?")
-                            : _circleAvatarText(thread.name),
-                      ),
-                    ),
-                    title: Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            (thread.name == null || thread.name!.isEmpty) 
-                              ? (thread.address ?? 'Bilinmeyen Gönderen')
-                              : thread.name!,
-                            style: TextStyle(
-                              fontWeight: isUnread ? FontWeight.bold : FontWeight.w500,
-                              fontSize: 16,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          _dateConvert(thread.date.toString()),
-                          style: TextStyle(
-                            color: isUnread ? Theme.of(context).colorScheme.primary : Colors.grey[500],
-                            fontSize: 12,
-                            fontWeight: isUnread ? FontWeight.w500 : FontWeight.normal,
-                          ),
-                        ),
-                      ],
-                    ),
-                    subtitle: Row(
-                      children: [
-                        isUnread 
-                          ? Container(
-                              width: 8,
-                              height: 8,
-                              margin: const EdgeInsets.only(right: 4),
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                color: Theme.of(context).colorScheme.primary,
-                              ),
-                            )
-                          : const SizedBox(width: 12),
-                        Expanded(
-                          child: Text(
-                            _subtitleConvert(thread.lastMessage),
-                            style: TextStyle(
-                              color: isUnread ? Colors.black87 : Colors.grey[600],
-                              fontWeight: isUnread ? FontWeight.w500 : FontWeight.normal,
-                              fontSize: 14,
-                              height: 1.4,
-                            ),
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                      ],
-                    ),
+        bool isUnread = !thread.isRead;
+        return Card(
+          child: InkWell(
+            borderRadius: BorderRadius.circular(16),
+            onTap: () async {
+              // Thread'i okundu olarak işaretle (Kotlin tarafında gerçekleşiyor)
+              if (thread.threadId != null && isUnread) {
+                // SmsService'i kullanarak okundu olarak işaretle
+                await SmsService.instance
+                    .markThreadAsRead(thread.threadId.toString());
+              }
+
+              // Mevcut işlemleri gerçekleştir
+              context
+                  .read<SmsCubit>()
+                  .filterMessageForAdress(thread.address ?? '');
+              _navigateToChatScreen(thread.address, thread.name);
+            },
+            onLongPress: () => _showMessageOptions(context, thread),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 4),
+              child: ListTile(
+                contentPadding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                leading: Hero(
+                  tag: "avatar_${thread.address}",
+                  child: CircleAvatar(
+                    radius: 24,
+                    backgroundColor: thread.avatarColor,
+                    child: thread.name == ""
+                        ? _circleAvatarText("?")
+                        : _circleAvatarText(thread.name),
                   ),
                 ),
+                title: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        (thread.name == null || thread.name!.isEmpty)
+                            ? (thread.address ?? 'Bilinmeyen Gönderen')
+                            : thread.name!,
+                        style: TextStyle(
+                          fontWeight:
+                              isUnread ? FontWeight.bold : FontWeight.w500,
+                          fontSize: 16,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      thread.formattedDate ?? '',
+                      style: TextStyle(
+                        color: isUnread
+                            ? Theme.of(context).colorScheme.primary
+                            : Colors.grey[500],
+                        fontSize: 12,
+                        fontWeight:
+                            isUnread ? FontWeight.w500 : FontWeight.normal,
+                      ),
+                    ),
+                  ],
+                ),
+                subtitle: Row(
+                  children: [
+                    isUnread
+                        ? Container(
+                            width: 8,
+                            height: 8,
+                            margin: const EdgeInsets.only(right: 4),
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: Theme.of(context).colorScheme.primary,
+                            ),
+                          )
+                        : const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        thread.formattedSubtitle ?? '',
+                        style: TextStyle(
+                          color: isUnread ? Colors.black87 : Colors.grey[600],
+                          fontWeight:
+                              isUnread ? FontWeight.w500 : FontWeight.normal,
+                          fontSize: 14,
+                          height: 1.4,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            );
-          }
+            ),
+          ),
         );
       },
     );
@@ -495,26 +493,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     }
   }
 
-  // Kişi için renk üretme
-  Color _getAvatarColor(String? name) {
-    if (name == null || name.isEmpty) {
-      return const Color(0xFF009688);
-    }
-    
-    // İsmin hash değerine göre renk belirle
-    final int hash = name.codeUnits.fold(0, (prev, element) => prev + element);
-    final List<Color> colors = [
-      const Color(0xFF009688), // Teal
-      const Color(0xFF2196F3), // Blue
-      const Color(0xFF673AB7), // Deep Purple
-      const Color(0xFF4CAF50), // Green
-      const Color(0xFFFF5722), // Deep Orange
-      const Color(0xFF607D8B), // Blue Grey
-    ];
-    
-    return colors[hash % colors.length];
-  }
-
   _navigateToChatScreen(address, name) {
     Navigator.push(
       context,
@@ -689,35 +667,4 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     }
   }
 
-  _subtitleConvert(text) {
-    if (text.toString().split(" ").length > 8) {
-      return "${text.toString().split(" ").sublist(0, 8).join(" ")}...";
-    } else {
-      return text.toString();
-    }
-  }
-
-  _dateConvert(date) {
-    DateTime messageDate = DateTime.parse(date);
-    DateTime now = DateTime.now();
-
-    if (messageDate.year == now.year &&
-        messageDate.month == now.month &&
-        messageDate.day == now.day) {
-      // Bugün gönderilmiş bir mesaj
-      return '${messageDate.hour.toString().padLeft(2, '0')}:${messageDate.minute.toString().padLeft(2, '0')}';
-    } else if (messageDate.year == now.year &&
-        messageDate.month == now.month &&
-        messageDate.day == now.day - 1) {
-      // Dün gönderilmiş bir mesaj
-      return 'Dün ${messageDate.hour.toString().padLeft(2, '0')}:${messageDate.minute.toString().padLeft(2, '0')}';
-    } else if (messageDate.year == now.year) {
-      // Aynı yıl içindeki önceki günlerde gönderilmiş bir mesaj
-      String monthName = DateFormat.MMMM('tr_TR').format(messageDate);
-      return '${messageDate.day} $monthName ';
-    } else {
-      // Farklı yıllarda gönderilmiş bir mesaj
-      return '${messageDate.year}-${messageDate.month.toString().padLeft(2, '0')}-${messageDate.day.toString().padLeft(2, '0')} ${messageDate.hour.toString().padLeft(2, '0')}:${messageDate.minute.toString().padLeft(2, '0')}';
-    }
-  }
 }

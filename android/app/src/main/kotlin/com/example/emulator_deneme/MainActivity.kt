@@ -164,6 +164,22 @@ class MainActivity: FlutterActivity() {
                         result.error("EXCEPTION", "Konuşma silme hatası: ${e.message}", e.toString())
                     }
                 }
+                "getThreadsReadStatus" -> {
+                    try {
+                        val data = call.arguments as? Map<String, Any>
+                        val threadIds = data?.get("threadIds") as? List<String>
+
+                        if (threadIds == null) {
+                            result.error("INVALID_ARGS", "threadIds geçersiz", null)
+                            return@setMethodCallHandler
+                        }
+
+                        val statusMap = SmsManager.getThreadsReadStatus(this, threadIds)
+                        result.success(statusMap)
+                    } catch (e: Exception) {
+                        result.error("EXCEPTION", "Konuşma okunma durumu alınamadı: ${e.message}", e.toString())
+                    }
+                }
                 else -> {
                     result.notImplemented()
                 }

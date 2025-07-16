@@ -339,5 +339,40 @@ class SmsManager {
                 return true // Hata durumunda varsayılan olarak okunmuş kabul et
             }
         }
+
+        fun getThreadsReadStatus(context: Context, threadIds: List<String>): Map<String, Boolean> {
+            val statusMap = mutableMapOf<String, Boolean>()
+            if (threadIds.isEmpty()) {
+                return statusMap
+            }
+
+            try {
+                val inboxUri = Uri.parse("content://sms/inbox")
+                val projection = arrayOf(Telephony.Sms.THREAD_ID)
+                val selection = "${Telephony.Sms.THREAD_ID} IN (${threadIds.joinToString(",")}) AND ${Telephony.Sms.READ} = 0"
+
+                context.contentResolver.query(
+                    inboxUri,
+                    projection,
+                    selection,
+                    null,
+                    null
+                )?.use { cursor ->
+                    val unreadThreadIds = mutableSetOf<String>()
+                    while (cursor.moveToNext()) {
+                        val threadId = cursor.getString(cursor.getColumnIndexOrThrow(Telephony.Sms.THREAD_ID))
+                        unreadThreadIds.add(threadId)
+                    }
+                    for (threadId in threadIds) {
+                        statusMap[threadId] = !unreadThreadIds.contains(threadId)
+                    }
+                }
+            } catch (e: Exception) {
+                for (threadId in threadIds) {
+                    statusMap[threadId] = true
+                }
+            }
+            return statusMap
+        }
     }
 }
