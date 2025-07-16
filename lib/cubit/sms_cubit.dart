@@ -242,7 +242,7 @@ class SmsCubit extends Cubit<SmsState> {
     }
   }
 
-  Future<void> getMessages() async {
+  Future<void> getMessages({int pageSize = 20}) async {
     if (_gettingMessages) {
       print("getMessages already in progress - skipping");
       return;
@@ -254,7 +254,8 @@ class SmsCubit extends Cubit<SmsState> {
       var fonksiyonBaslangic = DateTime.now();
 
       final Telephony telephony = Telephony.instance;
-      final bool? permissionsGranted = await telephony.requestPhoneAndSmsPermissions;
+      final bool? permissionsGranted =
+          await telephony.requestPhoneAndSmsPermissions;
 
       if (permissionsGranted != true) {
         print("SMS permissions not granted");
@@ -262,9 +263,18 @@ class SmsCubit extends Cubit<SmsState> {
         return;
       }
 
-      print("Fetching all SMS messages...");
-      var messages = await SmsQuery().getAllSms;
+      print(
+          "Fetching SMS messages... page: ${state.page}, pageSize: $pageSize");
+      var messages = await SmsQuery().querySms(
+        start: state.page * pageSize,
+        count: pageSize,
+      );
       print("Found ${messages.length} SMS messages");
+
+      if (messages.isEmpty) {
+        _gettingMessages = false;
+        return;
+      }
 
       Map<int?, SmsMessage> threadMap = {};
 
@@ -282,12 +292,12 @@ class SmsCubit extends Cubit<SmsState> {
       List<MyMessage> list = threadMap.values.map((sms) {
         // Kurumsal gönderenlerin ismini address'ten al
         String displayName = sms.address ?? '';
-        
+
         // Eğer address sadece rakam içeriyorsa, kişi adını null bırak (rehberden bulunacak)
         if (RegExp(r'^[\+\d\s\-\(\)]+$').hasMatch(displayName)) {
           displayName = ''; // Boş bırak, rehberden isim bulunacak
         }
-        
+
         return MyMessage(
             name: displayName,
             lastMessage: sms.body,
@@ -306,11 +316,13 @@ class SmsCubit extends Cubit<SmsState> {
         if (contacts.isNotEmpty) {
           for (var element in contacts) {
             if (element.phones.isNotEmpty) {
-              var phone =
-                  element.phones.first.number.toString().replaceAll(" ", "").replaceAll("-", "");
+              var phone = element.phones.first.number
+                  .toString()
+                  .replaceAll(" ", "")
+                  .replaceAll("-", "");
               for (var item in list) {
                 // Sadece telefon numarası olan address'ler için rehber eşleştirmesi yap
-                if (item.address != null && 
+                if (item.address != null &&
                     RegExp(r'^[\+\d\s\-\(\)]+$').hasMatch(item.address!) &&
                     item.address!.contains(phone)) {
                   item.name = element.displayName;
@@ -329,7 +341,8 @@ class SmsCubit extends Cubit<SmsState> {
 
       // Get read status for all threads
       final threadIds = list.map((m) => m.threadId.toString()).toList();
-      final readStatusMap = await SmsService.instance.getThreadsReadStatus(threadIds);
+      final readStatusMap =
+          await SmsService.instance.getThreadsReadStatus(threadIds);
 
       for (var message in list) {
         message.isRead = readStatusMap[message.threadId.toString()] ?? true;
@@ -339,9 +352,10 @@ class SmsCubit extends Cubit<SmsState> {
       }
 
       emit(state.copyWith(
-          myMessages: list,
-          messages: messages,
-          timestamp: DateTime.now().millisecondsSinceEpoch));
+          myMessages: [...state.myMessages, ...list],
+          messages: [...state.messages, ...messages],
+          timestamp: DateTime.now().millisecondsSinceEpoch,
+          page: state.page + 1));
 
       print(
           "Function completion time: ${DateTime.now().difference(fonksiyonBaslangic).inMilliseconds}ms");

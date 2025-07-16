@@ -50,21 +50,26 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   bool visible = true;
 
   late final ScrollController controller = ScrollController()
-    ..addListener(() {
-      //add more logic for your case
-      if (controller.position.userScrollDirection == ScrollDirection.reverse &&
-          visible) {
-        visible = false;
-        setState(() {
-          print("visible: $visible");
-        });
-      }
-      if (controller.position.userScrollDirection == ScrollDirection.forward &&
-          !visible) {
-        visible = true;
-        setState(() {});
-      }
-    });
+    ..addListener(_scrollListener);
+
+  void _scrollListener() {
+    if (controller.position.pixels == controller.position.maxScrollExtent) {
+      context.read<SmsCubit>().getMessages();
+    }
+    //add more logic for your case
+    if (controller.position.userScrollDirection == ScrollDirection.reverse &&
+        visible) {
+      visible = false;
+      setState(() {
+        print("visible: $visible");
+      });
+    }
+    if (controller.position.userScrollDirection == ScrollDirection.forward &&
+        !visible) {
+      visible = true;
+      setState(() {});
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
