@@ -423,6 +423,10 @@ class SmsCubit extends Cubit<SmsState> {
       ],
     );
   }
+
+  void appPaused() {
+    emit(state.copyWith(isInit: false));
+  }
   // Telefon numarasını temizleme (sadece rakamları bırakır ve Türk formatına göre normalleştirir)
   String cleanPhoneNumber(String number) {
     String cleaned = number.replaceAll(RegExp(r'\D'), ''); // Remove all non-digits

@@ -222,6 +222,23 @@ class SmsManager {
                 return totalDeletedRows
             }
         }
+
+        fun deleteThread(context: Context, threadId: String?): Int {
+            if (threadId == null) {
+                Log.e(TAG, "Cannot delete thread: threadId is null")
+                return 0
+            }
+
+            try {
+                val threadDeleteUri = Uri.parse("content://sms/conversations/$threadId")
+                val deletedRows = context.contentResolver.delete(threadDeleteUri, null, null)
+                Log.d(TAG, "Deleted $deletedRows rows using conversation URI")
+                return deletedRows
+            } catch (e: Exception) {
+                Log.e(TAG, "Error deleting by conversation URI: ${e.message}")
+                return 0
+            }
+        }
         
         /**
          * SMS mesajlarını okundu olarak işaretler

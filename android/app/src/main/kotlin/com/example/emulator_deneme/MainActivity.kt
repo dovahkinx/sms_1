@@ -143,6 +143,27 @@ class MainActivity: FlutterActivity() {
                         result.error("EXCEPTION", "Okunma durumu sorgulama hatası: ${e.message}", e.toString())
                     }
                 }
+                "deleteThread" -> {
+                    try {
+                        val data = call.arguments as? Map<String, Any>
+                        val threadId = data?.get("threadId") as? String
+
+                        if (threadId == null) {
+                            result.error("INVALID_ARGS", "threadId geçersiz", null)
+                            return@setMethodCallHandler
+                        }
+
+                        val deleted = SmsManager.deleteThread(this, threadId)
+
+                        if (deleted > 0) {
+                            result.success("Konuşma başarıyla silindi ($deleted satır)")
+                        } else {
+                            result.success("Konuşma silinemedi (0 satır)")
+                        }
+                    } catch (e: Exception) {
+                        result.error("EXCEPTION", "Konuşma silme hatası: ${e.message}", e.toString())
+                    }
+                }
                 else -> {
                     result.notImplemented()
                 }

@@ -42,7 +42,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         state == AppLifecycleState.inactive) {
       print("paused");
       // isloading getir
-      context.read<SmsCubit>().state.isInit = false;
+      context.read<SmsCubit>().appPaused();
     }
     super.didChangeAppLifecycleState(state);
   }
@@ -439,70 +439,33 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           ),
         );
 
-        SmsQuery query = SmsQuery();
-        var list = await query.querySms(
-          threadId: thread.threadId,
-        );
-
-        // Önce tüm mesajları sayalım
-        final int totalMessages = list.length;
-        int deletedCount = 0;
-        
-        // Tüm mesajları silmeye çalış
-        for (var item in list) {
-          if (item.id != null && item.threadId != null) {
-            final result = await SmsRemover()
-                .removeSmsById(
-                    item.id!.toString(), 
-                    item.threadId!.toString()
-                );
-            if (result.contains("başarıyla silindi")) {
-              deletedCount++;
-            }
-          }
-        }
+        final result = await SmsRemover()
+            .removeSmsByThreadId(thread.threadId.toString());
 
         // İlerleme göstergesini kapat
         if (context.mounted) {
           Navigator.of(context).pop();
         }
-        
+
         // UI'ı güncelle
         if (context.mounted) {
-          if (deletedCount == totalMessages && totalMessages > 0) {
+          if (result.contains("başarıyla silindi")) {
             // Tam silme başarılı, yerel listeyi de güncelle
             context.read<SmsCubit>().forceRefresh();
-            
+
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
-                content: Text('Konuşma başarıyla silindi ($deletedCount/$totalMessages)'),
+                content: Text(result),
                 backgroundColor: Theme.of(context).colorScheme.primary,
                 behavior: SnackBarBehavior.floating,
                 duration: const Duration(seconds: 2),
-              ),
-            );
-          } else if (deletedCount > 0) {
-            // Kısmen silme başarılı
-            context.read<SmsCubit>().forceRefresh();
-            
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text('Bazı mesajlar silinemedi ($deletedCount/$totalMessages)'),
-                backgroundColor: Colors.orange,
-                behavior: SnackBarBehavior.floating,
-                duration: const Duration(seconds: 2),
-                action: SnackBarAction(
-                  label: 'TEKRAR DENE',
-                  textColor: Colors.white,
-                  onPressed: () => _deleteConversation(thread),
-                ),
               ),
             );
           } else {
             // Hiç silme başarılı değil
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
-                content: Text('Mesajlar silinemedi. Lütfen tekrar deneyin.'),
+                content: Text(result),
                 backgroundColor: Colors.red,
                 behavior: SnackBarBehavior.floating,
                 duration: const Duration(seconds: 2),

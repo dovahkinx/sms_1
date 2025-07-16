@@ -25,4 +25,15 @@ class SmsRemover {
       return "SMS silme işlemi başarısız oldu: $e";
     }
   }
+
+  Future<String> removeSmsByThreadId(String threadId) async {
+    try {
+      final result = await _channel.invokeMethod('deleteThread', {
+        'threadId': threadId,
+      });
+      return result.toString();
+    } catch (e) {
+      return "Konuşma silme işlemi başarısız oldu: $e";
+    }
+  }
 }
