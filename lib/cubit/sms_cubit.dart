@@ -6,7 +6,7 @@ import 'package:fast_contacts/fast_contacts.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart' show Cubit;
 import 'package:flutter_sms_inbox/flutter_sms_inbox.dart' show SmsMessage, SmsQuery, SmsQueryKind;
-
+import 'package:intl/intl.dart';
 import 'package:sms_guard/model/my_message_model.dart';
 
 import 'package:sqflite/sqflite.dart';
@@ -242,7 +242,7 @@ class SmsCubit extends Cubit<SmsState> {
     }
   }
 
-  Future<void> getMessages() async {
+  Future<void> getMessages({int pageSize = 20}) async {
     if (_gettingMessages) {
       print("getMessages already in progress - skipping");
       return;
@@ -254,7 +254,8 @@ class SmsCubit extends Cubit<SmsState> {
       var fonksiyonBaslangic = DateTime.now();
 
       final Telephony telephony = Telephony.instance;
-      final bool? permissionsGranted = await telephony.requestPhoneAndSmsPermissions;
+      final bool? permissionsGranted =
+          await telephony.requestPhoneAndSmsPermissions;
 
       if (permissionsGranted != true) {
         print("SMS permissions not granted");
@@ -262,9 +263,18 @@ class SmsCubit extends Cubit<SmsState> {
         return;
       }
 
-      print("Fetching all SMS messages...");
-      var messages = await SmsQuery().getAllSms;
+      print(
+          "Fetching SMS messages... page: ${state.page}, pageSize: $pageSize");
+      var messages = await SmsQuery().querySms(
+        start: state.page * pageSize,
+        count: pageSize,
+      );
       print("Found ${messages.length} SMS messages");
+
+      if (messages.isEmpty) {
+        _gettingMessages = false;
+        return;
+      }
 
       Map<int?, SmsMessage> threadMap = {};
 
@@ -282,12 +292,12 @@ class SmsCubit extends Cubit<SmsState> {
       List<MyMessage> list = threadMap.values.map((sms) {
         // Kurumsal gönderenlerin ismini address'ten al
         String displayName = sms.address ?? '';
-        
+
         // Eğer address sadece rakam içeriyorsa, kişi adını null bırak (rehberden bulunacak)
         if (RegExp(r'^[\+\d\s\-\(\)]+$').hasMatch(displayName)) {
           displayName = ''; // Boş bırak, rehberden isim bulunacak
         }
-        
+
         return MyMessage(
             name: displayName,
             lastMessage: sms.body,
@@ -306,11 +316,13 @@ class SmsCubit extends Cubit<SmsState> {
         if (contacts.isNotEmpty) {
           for (var element in contacts) {
             if (element.phones.isNotEmpty) {
-              var phone =
-                  element.phones.first.number.toString().replaceAll(" ", "").replaceAll("-", "");
+              var phone = element.phones.first.number
+                  .toString()
+                  .replaceAll(" ", "")
+                  .replaceAll("-", "");
               for (var item in list) {
                 // Sadece telefon numarası olan address'ler için rehber eşleştirmesi yap
-                if (item.address != null && 
+                if (item.address != null &&
                     RegExp(r'^[\+\d\s\-\(\)]+$').hasMatch(item.address!) &&
                     item.address!.contains(phone)) {
                   item.name = element.displayName;
@@ -327,10 +339,23 @@ class SmsCubit extends Cubit<SmsState> {
 
       list.sort((a, b) => b.date!.compareTo(a.date!));
 
+      // Get read status for all threads
+      final threadIds = list.map((m) => m.threadId.toString()).toList();
+      final readStatusMap =
+          await SmsService.instance.getThreadsReadStatus(threadIds);
+
+      for (var message in list) {
+        message.isRead = readStatusMap[message.threadId.toString()] ?? true;
+        message.avatarColor = _getAvatarColor(message.name);
+        message.formattedDate = _dateConvert(message.date.toString());
+        message.formattedSubtitle = _subtitleConvert(message.lastMessage);
+      }
+
       emit(state.copyWith(
-          myMessages: list,
-          messages: messages,
-          timestamp: DateTime.now().millisecondsSinceEpoch));
+          myMessages: [...state.myMessages, ...list],
+          messages: [...state.messages, ...messages],
+          timestamp: DateTime.now().millisecondsSinceEpoch,
+          page: state.page + 1));
 
       print(
           "Function completion time: ${DateTime.now().difference(fonksiyonBaslangic).inMilliseconds}ms");
@@ -423,6 +448,10 @@ class SmsCubit extends Cubit<SmsState> {
       ],
     );
   }
+
+  void appPaused() {
+    emit(state.copyWith(isInit: false));
+  }
   // Telefon numarasını temizleme (sadece rakamları bırakır ve Türk formatına göre normalleştirir)
   String cleanPhoneNumber(String number) {
     String cleaned = number.replaceAll(RegExp(r'\D'), ''); // Remove all non-digits
@@ -436,5 +465,56 @@ class SmsCubit extends Cubit<SmsState> {
       cleaned = cleaned.substring(1);
     }
     return cleaned;
+  }
+
+  Color _getAvatarColor(String? name) {
+    if (name == null || name.isEmpty) {
+      return const Color(0xFF009688);
+    }
+
+    // İsmin hash değerine göre renk belirle
+    final int hash = name.codeUnits.fold(0, (prev, element) => prev + element);
+    final List<Color> colors = [
+      const Color(0xFF009688), // Teal
+      const Color(0xFF2196F3), // Blue
+      const Color(0xFF673AB7), // Deep Purple
+      const Color(0xFF4CAF50), // Green
+      const Color(0xFFFF5722), // Deep Orange
+      const Color(0xFF607D8B), // Blue Grey
+    ];
+
+    return colors[hash % colors.length];
+  }
+
+  String _subtitleConvert(text) {
+    if (text.toString().split(" ").length > 8) {
+      return "${text.toString().split(" ").sublist(0, 8).join(" ")}...";
+    } else {
+      return text.toString();
+    }
+  }
+
+  String _dateConvert(date) {
+    DateTime messageDate = DateTime.parse(date);
+    DateTime now = DateTime.now();
+
+    if (messageDate.year == now.year &&
+        messageDate.month == now.month &&
+        messageDate.day == now.day) {
+      // Bugün gönderilmiş bir mesaj
+      return '${messageDate.hour.toString().padLeft(2, '0')}:${messageDate.minute.toString().padLeft(2, '0')}';
+    } else if (messageDate.year == now.year &&
+        messageDate.month == now.month &&
+        messageDate.day == now.day - 1) {
+      // Dün gönderilmiş bir mesaj
+      return 'Dün ${messageDate.hour.toString().padLeft(2, '0')}:${messageDate.minute.toString().padLeft(2, '0')}';
+    } else if (messageDate.year == now.year) {
+      // Aynı yıl içindeki önceki günlerde gönderilmiş bir mesaj
+      String monthName = DateFormat.MMMM('tr_TR').format(messageDate);
+      return '${messageDate.day} $monthName ';
+    } else {
+      // Farklı yıllarda gönderilmiş bir mesaj
+      return '${messageDate.year}-${messageDate.month.toString().padLeft(2, '0')}-${messageDate.day.toString().padLeft(2, '0')} ${messageDate.hour.toString().padLeft(2, '0')}:${messageDate.minute.toString().padLeft(2, '0')}';
+    }
   }
 }

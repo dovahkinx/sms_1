@@ -18,6 +18,7 @@ class SmsState extends Equatable {
   String? text;
   String? name;
   int? timestamp;
+  int page;
 
   SmsState({
     this.isInit = false,
@@ -35,6 +36,7 @@ class SmsState extends Equatable {
     this.controller,
     this.name = "",
     this.timestamp,
+    this.page = 0,
   });
 
   SmsState copyWith({
@@ -53,6 +55,7 @@ class SmsState extends Equatable {
     TextEditingController? controller,
     String? name,
     int? timestamp,
+    int? page,
   }) {
     return SmsState(
       isInit: isInit ?? this.isInit,
@@ -70,6 +73,7 @@ class SmsState extends Equatable {
       controller: controller ?? this.controller,
       name: name ?? this.name,
       timestamp: timestamp ?? this.timestamp,
+      page: page ?? this.page,
     );
   }
 
@@ -90,5 +94,6 @@ class SmsState extends Equatable {
         controller,
         name,
         timestamp,
+        page,
       ];
 }

@@ -65,35 +65,6 @@ class MainActivity: FlutterActivity() {
                         result.error("EXCEPTION", "SMS gönderme hatası: ${e.message}", null)
                     }
                 }
-                "removeSms" -> {
-                    try {
-                        val data = call.arguments as? Map<String, Any>
-                        val id = data?.get("id") as? String
-                        val threadId = data?.get("threadId") as? String
-                        
-                        Log.d("SMS_GUARD", "Flutter'dan silme talebi alındı: id=$id, threadId=$threadId")
-                        
-                        if (id == null || threadId == null) {
-                            Log.e("SMS_GUARD", "Null id veya threadId: id=$id, threadId=$threadId")
-                            result.error("INVALID_ARGS", "ID veya threadId geçersiz", null)
-                            return@setMethodCallHandler
-                        }
-                        
-                        Log.d("SMS_GUARD", "SmsManager.deleteSms çağrılıyor: id=$id, threadId=$threadId")
-                        val deleted = SmsManager.deleteSms(this, id, threadId)
-                        
-                        if (deleted > 0) {
-                            Log.d("SMS_GUARD", "Mesaj başarıyla silindi, silinen satır sayısı: $deleted")
-                            result.success("SMS başarıyla silindi ($deleted satır)")
-                        } else {
-                            Log.w("SMS_GUARD", "Mesaj silinemedi (0 satır)")
-                            result.success("SMS silinemedi (0 satır)")
-                        }
-                    } catch (e: Exception) {
-                        Log.e("SMS_GUARD", "SMS silme hatası: ${e.message}", e)
-                        result.error("EXCEPTION", "SMS silme hatası: ${e.message}", e.toString())
-                    }
-                }
                 "markThreadAsRead" -> {
                     try {
                         val data = call.arguments as? Map<String, Any>
@@ -121,26 +92,41 @@ class MainActivity: FlutterActivity() {
                         result.error("EXCEPTION", "Okundu işaretleme hatası: ${e.message}", e.toString())
                     }
                 }
-                "isThreadRead" -> {
+                "deleteThread" -> {
                     try {
                         val data = call.arguments as? Map<String, Any>
                         val threadId = data?.get("threadId") as? String
                         
-                        Log.d("SMS_GUARD", "Flutter'dan okunma durumu sorgusu alındı: threadId=$threadId")
-                        
                         if (threadId == null) {
-                            Log.e("SMS_GUARD", "Null threadId: threadId=$threadId")
                             result.error("INVALID_ARGS", "threadId geçersiz", null)
                             return@setMethodCallHandler
                         }
                         
-                        val isRead = SmsManager.isThreadRead(this, threadId)
-                        
-                        Log.d("SMS_GUARD", "Thread $threadId okunma durumu: ${if (isRead) "okundu" else "okunmadı"}")
-                        result.success(isRead)
+                        val deleted = SmsManager.deleteThread(this, threadId)
+
+                        if (deleted > 0) {
+                            result.success("Konuşma başarıyla silindi ($deleted satır)")
+                        } else {
+                            result.success("Konuşma silinemedi (0 satır)")
+                        }
                     } catch (e: Exception) {
-                        Log.e("SMS_GUARD", "Okunma durumu sorgulama hatası: ${e.message}", e)
-                        result.error("EXCEPTION", "Okunma durumu sorgulama hatası: ${e.message}", e.toString())
+                        result.error("EXCEPTION", "Konuşma silme hatası: ${e.message}", e.toString())
+                    }
+                }
+                "getThreadsReadStatus" -> {
+                    try {
+                        val data = call.arguments as? Map<String, Any>
+                        val threadIds = data?.get("threadIds") as? List<String>
+
+                        if (threadIds == null) {
+                            result.error("INVALID_ARGS", "threadIds geçersiz", null)
+                            return@setMethodCallHandler
+                        }
+
+                        val statusMap = SmsManager.getThreadsReadStatus(this, threadIds)
+                        result.success(statusMap)
+                    } catch (e: Exception) {
+                        result.error("EXCEPTION", "Konuşma okunma durumu alınamadı: ${e.message}", e.toString())
                     }
                 }
                 else -> {

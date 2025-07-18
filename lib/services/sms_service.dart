@@ -146,23 +146,14 @@ class SmsService {
     }
   }
   
-  /// Bir konuşmanın okunma durumunu Kotlin tarafında kontrol eder
-  /// 
-  /// [threadId]: Kontrol edilecek konuşmanın thread ID'si
-  /// Returns: true: okunmuş, false: okunmamış
-  Future<bool> isThreadRead(String threadId) async {
+  Future<Map<String, bool>> getThreadsReadStatus(List<String> threadIds) async {
     try {
-      log('Thread okunma durumu sorgulanıyor: threadId=$threadId');
-      
-      final result = await _channel.invokeMethod('isThreadRead', {
-        'threadId': threadId,
+      final result = await _channel.invokeMethod('getThreadsReadStatus', {
+        'threadIds': threadIds,
       });
-      
-      log('Thread okunma durumu: ${result ? "okundu" : "okunmadı"}');
-      return result ?? true; // Eğer null gelirse varsayılan olarak okunmuş kabul et
+      return Map<String, bool>.from(result);
     } catch (e) {
-      log('Thread okunma durumu sorgulama hatası: $e');
-      return true; // Hata durumunda varsayılan olarak okunmuş kabul et
+      return {};
     }
   }
   
